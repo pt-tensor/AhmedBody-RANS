@@ -1,0 +1,44 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+# Mesh only (case 1-A). Does not run the solver.
+#------------------------------------------------------------------------------
+
+set -e
+
+runApplication -o surfaceFeatureExtract
+
+runApplication -o blockMesh || {
+    echo "Error: blockMesh failed. See log.blockMesh."
+    exit 1
+}
+
+# Stale checkMesh fields (e.g. nonOrthoAngle) break decomposePar if cell count changed
+rm -f constant/nonOrthoAngle
+rm -rf processor*
+
+runApplication -o decomposePar || {
+    echo "Error: decomposePar failed. See log.decomposePar."
+    exit 1
+}
+
+nProcs=$(getNumberOfProcessors)
+echo "Running snappyHexMesh ($nProcs processes) on $PWD"
+if ! mpirun --oversubscribe -n "$nProcs" snappyHexMesh -overwrite -parallel \
+    > log.snappyHexMesh 2>&1
+then
+    echo "Error: snappyHexMesh failed. See log.snappyHexMesh."
+    exit 1
+fi
+
+runApplication reconstructParMesh -constant
+rm -rf processor*
+
+restore0Dir
+
+runApplication checkMesh -writeFields '(nonOrthoAngle)' -constant
+
+echo "Mesh build complete ($nProcs cores)."
+
+#------------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+#------------------------------------------------------------------------------
+# Remove time folders and processor* only. Keeps 0/, mesh, logs, geometry.
+#------------------------------------------------------------------------------
+
+foamListTimes -rm 2>/dev/null || true
+rm -rf processor*
+rm -rf postProcessing
+
+echo "Cleaned time folders, processor*, and postProcessing."
+
+#------------------------------------------------------------------------------

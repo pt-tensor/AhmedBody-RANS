@@ -1,0 +1,40 @@
+#!/bin/sh
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+# Solve only. Requires a mesh from ./buildMesh (constant/polyMesh + 0/).
+# Foreground mpirun so Ctrl-C stops the run.
+#------------------------------------------------------------------------------
+
+set -e
+
+if [ ! -f constant/polyMesh/points ]
+then
+    echo "Error: no mesh found. Run ./buildMesh first."
+    exit 1
+fi
+
+if [ ! -f 0/U ]
+then
+    echo "Error: no fields in 0/. Run ./buildMesh first (restore0Dir)."
+    exit 1
+fi
+
+rm -rf processor*
+runApplication -o decomposePar
+
+app=$(getApplication)
+nProcs=$(getNumberOfProcessors)
+
+runParallel patchSummary
+runParallel potentialFoam -writephi
+
+echo "Running $app ($nProcs processes) on $PWD"
+mpirun --oversubscribe -n "$nProcs" "$app" -parallel
+
+runApplication reconstructPar -latestTime
+
+echo "Done."
+echo "  Force coeffs: postProcessing/forceCoeffs1/"
+
+#------------------------------------------------------------------------------
