@@ -1,0 +1,96 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// STAGE 3 — Production CAA (pimpleFoam + IDDES + 50 kHz pressure sampling)
+//
+// Time-step rationale (f_max = 2500 Hz):
+//   Acoustic Nyquist ≥ 2·f_max → fs ≥ 5 kHz absolute minimum;
+//   production sampling fs = 50 kHz (writeInterval 2e-5 s) for PSD quality.
+//   CFL: on Δx≈4 mm, U≈40 → Δt_Co1 ≈ 1e-4 s; fixed Δt=2e-5 keeps Co≪1
+//   and aligns solver steps with acoustic sampling (no temporal aliasing).
+//
+// Acquisition window: ≥ 0.2–0.5 s of statistically stationary data after
+// Stage-2 purge for Welch segments with adequate frequency resolution
+//   Δf ≈ fs / nperseg; e.g. nperseg=8192 → Δf ≈ 6.1 Hz at 50 kHz.
+// ************************************************************************* //
+
+application     pimpleFoam;
+
+startFrom       latestTime;
+
+startTime       0.5;               // continue after Stage-2 purge
+
+stopAt          endTime;
+
+endTime         1.0;               // +0.5 s production acoustics (~19 T_conv)
+
+deltaT          2e-5;              // fixed for uniform acoustic sampling
+
+writeControl    runTime;
+
+writeInterval   0.05;              // volume fields (not acoustic rate)
+
+purgeWrite      4;
+
+writeFormat     binary;
+
+writePrecision  8;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   8;
+
+runTimeModifiable true;
+
+adjustTimeStep  no;                // fixed Δt for clean Welch / FW-H clocks
+
+functions
+{
+    #include "forceCoeffs"
+    #include "acousticProbes"
+    #include "acousticSurfaceSampling"
+
+    // Uncomment ONLY if libAcoustics.so is installed and verified:
+    // #include "acousticFWH"
+
+    // Optional field averages for mean/rms validation of CAA sources
+    fieldAverage1
+    {
+        type            fieldAverage;
+        libs            (fieldFunctionObjects);
+        writeControl    writeTime;
+
+        fields
+        (
+            U
+            {
+                mean        on;
+                prime2Mean  on;
+                base        time;
+            }
+            p
+            {
+                mean        on;
+                prime2Mean  on;
+                base        time;
+            }
+        );
+    }
+}
+
+
+// ************************************************************************* //

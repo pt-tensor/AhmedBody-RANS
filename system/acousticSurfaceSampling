@@ -1,0 +1,39 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// High-rate surface pressure on the Ahmed body for Curle / FW-H post-processing.
+// Stock ESI OpenFOAM: use surfaces functionObject (always available).
+// Optional libAcoustics FW-H block is in system/acousticFWH (enable if built).
+// ************************************************************************* //
+
+acousticSurfaceSampling
+{
+    type            surfaces;
+    libs            (sampling);
+
+    writeControl    runTime;
+    writeInterval   2e-5;          // 50 kHz — matches f_max=2.5 kHz with margin
+
+    surfaceFormat   raw;           // or vtk / ensight; raw is lightest for scripts
+    fields          (p);
+
+    interpolationScheme cellPoint;
+
+    surfaces
+    {
+        ahmedBody
+        {
+            type        patch;
+            patches     (ahmed_bodyGroup);
+            // Store face centres + areas for Curle integration in Python
+            interpolate false;
+        }
+    }
+}
+
+
+// ************************************************************************* //

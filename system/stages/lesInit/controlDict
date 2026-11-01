@@ -1,0 +1,65 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// STAGE 2 — Transient IDDES purge (pimpleFoam)
+// Flush RANS numerical transients over ~10–20 convective times:
+//   T_conv = L / U∞ ≈ 1.044 / 40 ≈ 0.026 s → 20·T_conv ≈ 0.52 s
+// Δt chosen for Co_max < 1 on finest cells (~2–4 mm, U~40):
+//   Δt ≲ 4e-3 / 40 = 1e-4 s; use 2e-5 for acoustic readiness from day one.
+// No high-rate acoustic sampling here (I/O cost); forces only.
+// ************************************************************************* //
+
+application     pimpleFoam;
+
+startFrom       latestTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         0.5;               // ~19 convective times
+
+deltaT          2e-5;
+
+writeControl    adjustableRunTime;
+
+writeInterval   0.05;
+
+purgeWrite      4;
+
+writeFormat     binary;
+
+writePrecision  8;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   8;
+
+runTimeModifiable true;
+
+adjustTimeStep  yes;
+
+maxCo           0.9;               // keep Co_max < 1
+maxDeltaT       5e-5;
+
+functions
+{
+    #include "forceCoeffs"
+}
+
+
+// ************************************************************************* //

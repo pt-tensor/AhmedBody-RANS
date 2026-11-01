@@ -1,0 +1,243 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// CAA mesh overlay for Ahmed 25° hybrid LES/IDDES + FW-H.
+//
+// Acoustic design notes (air, c0 ≈ 343 m/s, f_max = 2500 Hz):
+//   λ_min = c0 / f_max ≈ 0.137 m
+//   Target ≥ 15–20 cells / λ in the acoustic SOURCE region
+//     → Δx_src ≲ λ_min / 15 ≈ 9.1e-3 m
+//   Background: blockMesh (40 20 20) over 20×8×8 m → Δx0 ≈ 0.5 m
+//   Level n cell size ≈ Δx0 / 2^n:
+//     L5 ≈ 15.6 mm, L6 ≈ 7.8 mm, L7 ≈ 3.9 mm, L8 ≈ 1.95 mm
+//   Source boxes (slant + near wake) target L6–L7 → resolves ≥ 2.5 kHz.
+//
+// Near-wall y+ ≈ 1 (resolved BL / IDDES wall model hybrid):
+//   u_τ ≈ U∞ √(Cf/2) with Cf ~ 3e-3 → ≈ 1.55 m/s
+//   y1 = y+ · ν / u_τ ≈ 1 · 1.5e-5 / 1.55 ≈ 9.7e-6 m
+//   Absolute first-layer thickness set below; 15–20 layers on body.
+//
+// Activate with:  ./scripts/caa/activate_mesh.sh caa
+// ============================================================================
+
+castellatedMesh true;
+snap            true;
+addLayers       true;
+
+
+geometry
+{
+    ahmed_25deg_m.stl
+    {
+        type triSurfaceMesh;
+        name ahmed_body;
+    }
+
+    // Far wake / coarse acoustic buffer (keeps dissipation away from body)
+    refinementBox_far
+    {
+        type box;
+        min (-1.5 -1.0 0.0);
+        max (10.0  1.0 3.0);
+    }
+
+    // Intermediate wake
+    refinementBox_wake
+    {
+        type box;
+        min (-0.8 -0.7 0.0);
+        max ( 5.0  0.7 2.0);
+    }
+
+    // Near wake + underbody
+    refinementBox_nearWake
+    {
+        type box;
+        min (-0.6 -0.55 0.0);
+        max ( 2.5  0.55 1.2);
+    }
+
+    // Slant-edge separation / C-pillar vortex cores (primary noise sources)
+    refinementBox_slant
+    {
+        type box;
+        // Ahmed body ~ [0, 1.044] in x; slant starts ~ x = 0.822 for L=1.044
+        min ( 0.70 -0.45 0.05);
+        max ( 1.40  0.45 0.55);
+    }
+
+    // Immediate base wake shear layers
+    refinementBox_base
+    {
+        type box;
+        min ( 0.95 -0.40 0.00);
+        max ( 1.80  0.40 0.45);
+    }
+}
+
+
+castellatedMeshControls
+{
+    maxLocalCells  8000000;
+    maxGlobalCells 80000000;
+    minRefinementCells 10;
+    maxLoadUnbalance 0.10;
+    // More buffer cells → smoother size transitions → less numerical noise
+    nCellsBetweenLevels 4;
+
+    features
+    (
+        {
+            file "ahmed_25deg_m.eMesh";
+            // Sharp A-/C-pillar and slant edges: capture vortex shedding seeds
+            level 8;
+        }
+    );
+
+    refinementSurfaces
+    {
+        ahmed_body
+        {
+            // Surface L6–L7 → Δx ≈ 4–8 mm on body (source surface for Curle/FW-H)
+            level (6 7);
+            patchInfo
+            {
+                type wall;
+                inGroups (ahmed_bodyGroup);
+            }
+        }
+    }
+
+    refinementRegions
+    {
+        ahmed_body
+        {
+            mode distance;
+            levels ((0.015 7) (0.05 6) (0.15 5));
+        }
+
+        refinementBox_far
+        {
+            mode inside;
+            levels ((1E15 3));
+        }
+
+        refinementBox_wake
+        {
+            mode inside;
+            levels ((1E15 4));
+        }
+
+        refinementBox_nearWake
+        {
+            mode inside;
+            levels ((1E15 5));
+        }
+
+        refinementBox_slant
+        {
+            mode inside;
+            levels ((1E15 6));
+        }
+
+        refinementBox_base
+        {
+            mode inside;
+            levels ((1E15 6));
+        }
+    }
+
+    resolveFeatureAngle 25;
+    locationInMesh (3.0001 3.0001 0.43);
+    allowFreeStandingZoneFaces true;
+}
+
+
+snapControls
+{
+    nSmoothPatch 3;
+    tolerance 2.0;
+    nSolveIter 50;
+    nRelaxIter 5;
+    nFeatureSnapIter 15;
+    implicitFeatureSnap false;
+    explicitFeatureSnap true;
+    multiRegionFeatureSnap false;
+}
+
+
+addLayersControls
+{
+    // Absolute sizes required for target y+ ≈ 1
+    relativeSizes false;
+
+    layers
+    {
+        lowerWall
+        {
+            nSurfaceLayers 8;
+        }
+
+        ahmed_body
+        {
+            // 18 layers with expansion 1.2 → total BL pack ~ 0.5–1 mm
+            nSurfaceLayers 18;
+        }
+    }
+
+    expansionRatio 1.2;
+
+    // First cell centre ≈ half of firstLayerThickness for hex layers
+    // firstLayerThickness ≈ 2 · y1 ≈ 2e-5 m → y+ ~ 1 at U∞=40 m/s
+    firstLayerThickness 2.0e-5;
+    minThickness        1.0e-5;
+
+    nGrow 0;
+    featureAngle 60;
+    slipFeatureAngle 30;
+    nRelaxIter 5;
+    nSmoothSurfaceNormals 1;
+    nSmoothNormals 3;
+    nSmoothThickness 10;
+    maxFaceThicknessRatio 0.5;
+    maxThicknessToMedialRatio 0.3;
+    minMedialAxisAngle 90;
+    nBufferCellsNoExtrude 0;
+    nLayerIter 50;
+    nRelaxedIter 20;
+}
+
+
+meshQualityControls
+{
+    #include "meshQualityDict"
+
+    nSmoothScale 4;
+    errorReduction 0.75;
+}
+
+
+writeFlags
+(
+    scalarLevels
+    layerSets
+    layerFields
+);
+
+
+mergeTolerance 1e-6;
+
+
+// ************************************************************************* //

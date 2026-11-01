@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2406                                 |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -13,15 +13,15 @@ FoamFile
     object      turbulenceProperties;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// STAGE 1 — RANS k-ω SST (provides mean fields + ω for IDDES hand-off)
+// ************************************************************************* //
 
 simulationType      RAS;
 
 RAS
 {
     RASModel        kOmegaSST;
-
     turbulence      on;
-
     printCoeffs     on;
 }
 

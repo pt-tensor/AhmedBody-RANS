@@ -1,0 +1,71 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// STAGE 2 — Low-dissipation LES/IDDES schemes (same family as production CAA)
+//
+// Time:     backward (BDF2) — 2nd-order implicit, good for Co ~ O(1)
+// Convection: Gauss LUST grad(U) — 75% linear / 25% linearUpwind blend;
+//             standard low-dissipation choice for DES/LES aeroacoustics.
+//             Alternative: linear (pure central) if mesh + Δt keep boundedness.
+// ************************************************************************* //
+
+ddtSchemes
+{
+    default         backward;
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+    // Mild limiter on U gradient stabilises start-up without killing acoustics
+    grad(U)         cellLimited Gauss linear 0.5;
+}
+
+divSchemes
+{
+    default         none;
+
+    // LUST: preferred CAA convection (low numerical dissipation)
+    div(phi,U)      Gauss LUST grad(U);
+
+    // Turbulence scalars: slightly more dissipative OK
+    div(phi,k)      Gauss limitedLinear 1;
+    div(phi,omega)  Gauss limitedLinear 1;
+
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+
+wallDist
+{
+    method          meshWave;
+}
+
+
+// ************************************************************************* //

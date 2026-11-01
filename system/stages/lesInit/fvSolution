@@ -1,0 +1,81 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// STAGE 2 — Robust PIMPLE for IDDES start-up (more outer correctors)
+// ************************************************************************* //
+
+solvers
+{
+    p
+    {
+        solver          GAMG;
+        smoother        DICGaussSeidel;
+        tolerance       1e-7;
+        relTol          0.05;
+    }
+
+    pFinal
+    {
+        $p;
+        relTol          0;
+    }
+
+    "(U|k|omega)"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-7;
+        relTol          0.1;
+    }
+
+    "(U|k|omega)Final"
+    {
+        $U;
+        relTol          0;
+    }
+}
+
+PIMPLE
+{
+    nOuterCorrectors            4;   // stronger coupling during transient purge
+    nCorrectors                 2;
+    nNonOrthogonalCorrectors    1;
+
+    residualControl
+    {
+        "(U|p)"
+        {
+            tolerance   1e-4;
+            relTol      0;
+        }
+    }
+}
+
+relaxationFactors
+{
+    fields
+    {
+        "p.*"           0.7;
+    }
+    equations
+    {
+        "U.*"           0.7;
+        "k.*"           0.5;
+        "omega.*"       0.5;
+    }
+}
+
+
+// ************************************************************************* //

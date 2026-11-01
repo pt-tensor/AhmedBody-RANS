@@ -1,0 +1,68 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// STAGE 3 — Production CAA numerics (identical family to Stage 2)
+// Keep schemes frozen between Stage 2 and 3 so spectra are not polluted by
+// a scheme change at the start of acoustic acquisition.
+// ************************************************************************* //
+
+ddtSchemes
+{
+    // BDF2: 2nd-order, low dissipation vs Crank–Nicolson (which can ring)
+    default         backward;
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+    // Production: drop limiter vs Stage-2 if stable (0 = unlimited)
+    grad(U)         Gauss linear;
+}
+
+divSchemes
+{
+    default         none;
+
+    // Gauss LUST: industry-standard low-dissipation LES/DES convection
+    div(phi,U)      Gauss LUST grad(U);
+
+    div(phi,k)      Gauss limitedLinear 1;
+    div(phi,omega)  Gauss limitedLinear 1;
+
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+
+wallDist
+{
+    method          meshWave;
+}
+
+
+// ************************************************************************* //

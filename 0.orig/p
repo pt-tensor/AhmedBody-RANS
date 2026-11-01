@@ -31,6 +31,9 @@ boundaryField
 
     outlet
     {
+        // Incompressible CAA: fixed p is OK with a long domain; if probe
+        // spectra show reflection tones, extend outlet and/or enable the
+        // optional sponge (system/fvOptions.caa.sponge + topoSetDict.sponge).
         type            fixedValue;
         value           $internalField;
     }

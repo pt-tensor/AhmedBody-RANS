@@ -1,0 +1,92 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// STAGE 3 — Production PIMPLE (slightly leaner outer loops once purged)
+// ************************************************************************* //
+
+solvers
+{
+    p
+    {
+        solver          GAMG;
+        smoother        DICGaussSeidel;
+        tolerance       1e-8;
+        relTol          0.01;
+        maxIter         100;
+    }
+
+    pFinal
+    {
+        $p;
+        relTol          0;
+        tolerance       1e-8;
+    }
+
+    "(U|k|omega)"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-8;
+        relTol          0.01;
+    }
+
+    "(U|k|omega)Final"
+    {
+        $U;
+        relTol          0;
+    }
+}
+
+PIMPLE
+{
+    nOuterCorrectors            3;
+    nCorrectors                 2;
+    nNonOrthogonalCorrectors    1;
+
+    // Momentum predictor helps Co stability with LUST
+    momentumPredictor           yes;
+
+    residualControl
+    {
+        U
+        {
+            tolerance   1e-5;
+            relTol      0;
+        }
+        p
+        {
+            tolerance   1e-5;
+            relTol      0;
+        }
+    }
+}
+
+relaxationFactors
+{
+    // Fully implicit PIMPLE: under-relax lightly or not at all in production
+    fields
+    {
+        "p.*"           1.0;
+    }
+    equations
+    {
+        "U.*"           1.0;
+        "k.*"           1.0;
+        "omega.*"       1.0;
+    }
+}
+
+
+// ************************************************************************* //

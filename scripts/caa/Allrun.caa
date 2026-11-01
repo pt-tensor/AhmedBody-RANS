@@ -1,0 +1,50 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# Full hybrid CAA workflow for Ahmed 25° body
+#   0) CAA mesh (optional if already built)
+#   1) Steady RANS init          (simpleFoam)
+#   2) Transient IDDES purge     (pimpleFoam)
+#   3) Production acoustic run   (pimpleFoam + 50 kHz sampling)
+#   4) SPL / 1/3-octave spectra  (Python)
+#
+# Target: OpenFOAM ESI v2312 / v2406 (compatible with v2206 syntax)
+#------------------------------------------------------------------------------
+cd "${0%/*}/../.." || exit 1
+
+set -e
+
+MESH_FIRST="${MESH_FIRST:-yes}"
+RUN_SPL="${RUN_SPL:-yes}"
+
+echo "============================================================"
+echo " Ahmed Body Hybrid CAA — Allrun"
+echo "============================================================"
+
+if [ "$MESH_FIRST" = yes ]
+then
+    ./scripts/caa/activate_mesh.sh caa
+    ./buildMesh
+fi
+
+./scripts/caa/stage1_rans.sh
+./scripts/caa/stage2_lesInit.sh
+./scripts/caa/stage3_caa.sh
+
+if [ "$RUN_SPL" = yes ]
+then
+    if command -v python3 >/dev/null 2>&1
+    then
+        python3 scripts/caa/compute_spl.py \
+            --probe-dir postProcessing/acousticProbes \
+            --out-dir Reports/caa \
+            || echo "Warning: SPL post-process failed (run manually when data ready)"
+    else
+        echo "python3 not found — skip SPL (scripts/caa/compute_spl.py)"
+    fi
+fi
+
+echo "============================================================"
+echo " CAA workflow finished."
+echo "============================================================"
+
+#------------------------------------------------------------------------------
