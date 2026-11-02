@@ -1,0 +1,36 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      turbulenceProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// STAGE 2/3 — Improved Delayed DES (k-ω SST IDDES)
+// Hybrid RANS near wall + LES in separated slant / wake → good CAA sources.
+// Alternative pure LES: LESModel Wale; delta cubeRootVol;
+// ************************************************************************* //
+
+simulationType      LES;
+
+LES
+{
+    LESModel        kOmegaSSTIDDES;
+
+    turbulence      on;
+    printCoeffs     on;
+
+    // Stock ESI IDDES length-scale; override only if your build documents
+    // IDDESDeltaCoeffs (hmax / cw) — varies slightly across v2206–v2406.
+    delta           IDDESDelta;
+}
+
+
+// ************************************************************************* //

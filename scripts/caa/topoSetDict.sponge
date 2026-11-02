@@ -1,0 +1,39 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      topoSetDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Optional: create outletSpongeZone for system/fvOptions.caa.sponge
+//   cp scripts/caa/topoSetDict.sponge system/topoSetDict && topoSet
+// ************************************************************************* //
+
+actions
+(
+    {
+        name    outletSpongeCellSet;
+        type    cellSet;
+        action  new;
+        source  boxToCell;
+        box     (12 -4 0) (15 4 8);   // last 3 m before outlet
+    }
+    {
+        name    outletSpongeZone;
+        type    cellZoneSet;
+        action  new;
+        source  setToCellZone;
+        set     outletSpongeCellSet;
+    }
+);
+
+
+// ************************************************************************* //

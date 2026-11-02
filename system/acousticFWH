@@ -1,0 +1,79 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// OPTIONAL: Ffowcs Williams–Hawkings (Farassat 1A) via unicfdlab/libAcoustics
+// or equivalent ESI addon. Build/install libAcoustics.so before enabling:
+//   #include "acousticFWH"
+// inside controlDict functions { }.
+//
+// If the library is unavailable, rely on acousticSurfaceSampling +
+// scripts/caa/compute_spl.py (compact Curle far-field from surface p').
+//
+// Reference: https://github.com/unicfdlab/libAcoustics
+// Syntax may vary slightly by libAcoustics release — verify against your build.
+// ************************************************************************* //
+
+FWH
+{
+    type            FfowcsWilliamsHawkings;
+    libs            ("libAcoustics.so");
+
+    writeControl    runTime;
+    writeInterval   2e-5;
+
+    // Solid permeable surface = Ahmed body wall (Curle limit of FW-H)
+    patches         (ahmed_bodyGroup);
+
+    // Freestream / ambient (incompressible analogy: p_kinematic · ρ∞)
+    c0              343.0;         // sound speed [m/s]
+    rhoRef          1.225;         // air density [kg/m3]
+    pInf            0;             // gauge kinematic pressure reference
+
+    // Observer microphones (same layout as acousticProbes)
+    observers
+    {
+        mic_wake_1m
+        {
+            position    (2.044 0.0 0.20);
+        }
+        mic_wake_3m
+        {
+            position    (4.044 0.0 0.20);
+        }
+        mic_wake_5m
+        {
+            position    (6.044 0.0 0.20);
+        }
+        mic_side_1m_p
+        {
+            position    (2.044 1.0 0.20);
+        }
+        mic_side_1m_m
+        {
+            position    (2.044 -1.0 0.20);
+        }
+        mic_side_3m_p
+        {
+            position    (4.044 1.0 0.20);
+        }
+        mic_side_3m_m
+        {
+            position    (4.044 -1.0 0.20);
+        }
+        mic_side_5m_p
+        {
+            position    (6.044 1.0 0.20);
+        }
+        mic_side_5m_m
+        {
+            position    (6.044 -1.0 0.20);
+        }
+    }
+}
+
+
+// ************************************************************************* //

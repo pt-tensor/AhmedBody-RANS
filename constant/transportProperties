@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2406                                 |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -13,6 +13,10 @@ FoamFile
     object      transportProperties;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Air at standard conditions (incompressible / low-Mach Ma≈0.117 @ 40 m/s).
+// ρ∞ = 1.225 kg/m³ used in acoustic post-processing (kinematic p · ρ → Pa).
+// Re_H = U∞ · H / ν = 40 · 0.288 / 1.5e-5 ≈ 7.68e5
+// ************************************************************************* //
 
 transportModel  Newtonian;
 

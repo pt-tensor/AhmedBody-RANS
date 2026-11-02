@@ -1,21 +1,21 @@
-# Ahmed Bluff Body
+# Ahmed Bluff Body — RANS Validation + Hybrid CAA
 
 Author: Caesar Wiratama
 
-Steady RANS validation of the **25° Ahmed body**,
+OpenFOAM ESI **v2312 / v2406** (syntax compatible with **v2206**) case for the **25° Ahmed body**.
 
-| | |
-|--|--|
-| **case_id** | 1-A |
-| **Decklid angle** | 25° |
-| **Solver** | `simpleFoam` |
-| **Turbulence** | RAS — `kOmegaSST` |
-| **Inlet U** | 40 m/s |
-| **Reference Cd / Cl (exp)** | 0.299 / 0.345 |
-| **Prior OF-7 Cd / Cl** | 0.299 / 0.339 |
-| **Mesh (1-A)** | ~8.25 M cells |
+| | RANS baseline | Hybrid CAA |
+|--|--|--|
+| **case_id** | 1-A | 1-A-CAA |
+| **Decklid angle** | 25° | 25° |
+| **Solver** | `simpleFoam` | `simpleFoam` → `pimpleFoam` |
+| **Turbulence** | RAS `kOmegaSST` | LES `kOmegaSSTIDDES` |
+| **Inlet U** | 40 m/s | 40 m/s (Ma ≈ 0.117) |
+| **Acoustics** | — | Probes + surface \(p\) @ 50 kHz; Curle / optional FW-H |
+| **\(f_{\max}\)** | — | 2.5 kHz |
+| **Reference Cd / Cl (exp)** | 0.299 / 0.345 | time-averaged vs same |
 
-## Run
+## RANS validation (original)
 
 ```sh
 ./Allclean      # wipe mesh + results
@@ -23,36 +23,59 @@ Steady RANS validation of the **25° Ahmed body**,
 ./Run           # decompose → potentialFoam → simpleFoam → reconstruct
 ```
 
-Or all-in-one: `./Allrun` (= `./buildMesh` then `./Run`).
-
-To re-solve without remeshing:
-
-```sh
-./cleanResults
-./Run
-```
-
-Default decomposition: **8** ranks (`system/decomposeParDict`, hierarchical `(4 2 1)`). Adjust
-`numberOfSubdomains` / `coeffs.n` if needed.
-
-After the run, force coefficients are in
-`postProcessing/forceCoeffs1/<time>/coefficient.dat`. Average the last
-50 iterations for Cd / Cl (same post-process as the original case).
-
-Refresh plots:
+Or `./Allrun`. Force coeffs: `postProcessing/forceCoeffs1/`. Plots:
 
 ```sh
 python3 Reports/scripts/plot_force_coeffs.py
 ```
 
-Outputs: `Reports/figures/Cd_vs_iteration.svg`, `Reports/figures/Cl_vs_iteration.svg`
-(exp refs Cd=0.299, Cl=0.345).
+## Hybrid CAA (LES/IDDES + acoustic analogy)
+
+Full documentation:
+
+- [docs/caa/METHODOLOGY.md](docs/caa/METHODOLOGY.md) — stages, schemes, FW-H
+- [docs/caa/MESH_STRATEGY.md](docs/caa/MESH_STRATEGY.md) — \(y^+\approx1\), cells/λ
+- [docs/caa/TROUBLESHOOTING.md](docs/caa/TROUBLESHOOTING.md) — reflections, dissipation, init
+
+```sh
+# End-to-end (HPC: CAA mesh is O(10M–60M) cells)
+./scripts/caa/Allrun.caa
+
+# Manual stages
+./scripts/caa/activate_mesh.sh caa && ./buildMesh
+./scripts/caa/stage1_rans.sh      # steady RANS init
+./scripts/caa/stage2_lesInit.sh   # IDDES purge ~0.5 s
+./scripts/caa/stage3_caa.sh       # production + 50 kHz sampling
+pip install -r scripts/caa/requirements-caa.txt
+python3 scripts/caa/compute_spl.py --out-dir Reports/caa
+```
+
+Smoke-test the SPL pipeline without CFD:
+
+```sh
+python3 scripts/caa/compute_spl.py --demo --out-dir Reports/caa
+```
+
+### Stage dictionaries
+
+| Stage | Path | Application |
+| --- | --- | --- |
+| 1 RANS | `system/stages/rans/` | `simpleFoam` |
+| 2 Purge | `system/stages/lesInit/` | `pimpleFoam` + IDDES |
+| 3 CAA | `system/stages/caa/` | `pimpleFoam` + probes/surfaces |
+
+Activate with `./scripts/caa/activate_stage.sh <rans|lesInit|caa>`.
+
+### Observers
+
+Microphones at ~1, 3, 5 m aft of the base and lateral (±y), defined in `system/acousticProbes`. Optional FW-H: `system/acousticFWH` (requires `libAcoustics.so`).
 
 ## Geometry & BCs
 
 - STL: `constant/triSurface/ahmed_25deg_m.stl`
-- Domain: `x ∈ [-5, 15]`, `y ∈ [-4, 4]`, `z ∈ [0, 8]` m
-- Walls: `ahmed_body` (no-slip) + `lowerWall` (moving ground, U = freestream)
+- Domain: \(x\in[-5,15]\), \(y\in[-4,4]\), \(z\in[0,8]\) m
+- Walls: `ahmed_body` (no-slip) + `lowerWall` (moving ground)
 - Slip: `upperWall`, `frontAndBack`
-- Initial fields live in `0.orig/` and are restored onto processors after meshing
+- Initial fields: `0.orig/`
 
+Default decomposition: **8** ranks (`system/decomposeParDict`). Increase for CAA meshes.

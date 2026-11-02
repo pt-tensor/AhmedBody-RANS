@@ -1,0 +1,42 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvOptions;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// OPTIONAL outlet sponge to damp spurious reflections before they reach
+// microphones. Copy to constant/fvOptions (ESI) or system/fvOptions depending
+// on your version's fvOptions location convention, then re-run Stage 2/3.
+//
+// Prefer extending the domain first; enable this if probe spectra still show
+// grid tones that move when the outlet location changes.
+// ************************************************************************* //
+
+outletSponge
+{
+    type            vectorSemiImplicitSource;
+    active          yes;
+
+    selectionMode   cellZone;
+    cellZone        outletSpongeZone;   // create with topoSet / snappy box
+
+    volumeMode      specific;
+
+    injectionRateSuSp
+    {
+        // Soft sink toward freestream: Su + Sp·U , Sp < 0
+        U           ((40 0 0) -50);
+    }
+}
+
+
+// ************************************************************************* //

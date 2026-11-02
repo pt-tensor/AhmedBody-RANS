@@ -1,0 +1,48 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312 / v2406 (ESI)                   |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// Far-field microphone / observer probes for hybrid CAA.
+// Locations: 1 m, 3 m, 5 m behind the wake centreline and lateral to the
+// slant mid-plane. Ahmed body length L≈1.044 m, base near x≈1.044, z≈H/2.
+//
+// Sampling rate target: 50 kHz → write every Δt with Δt=2e-5 s (Nyquist 25 kHz)
+// or every time step if Δt=2e-5. Prefer writeInterval in seconds via
+// writeControl = runTime for robust rate control.
+// ************************************************************************* //
+
+acousticProbes
+{
+    type            probes;
+    libs            (sampling);
+
+    writeControl    runTime;
+    writeInterval   2e-5;          // 50 kHz sampling
+
+    fields          (p U);
+
+    // Prefer cell-point interpolation for smoother pressure histories
+    interpolationScheme cellPoint;
+
+    probeLocations
+    (
+        // Behind wake, on centreline (y=0), mid-height of slant (~0.2 m)
+        (2.044  0.0  0.20)   // ~1 m aft of base
+        (4.044  0.0  0.20)   // ~3 m aft of base
+        (6.044  0.0  0.20)   // ~5 m aft of base
+
+        // Perpendicular to slant centre line (lateral observers, same x as base+1m)
+        (2.044  1.0  0.20)
+        (2.044 -1.0  0.20)
+        (4.044  1.0  0.20)
+        (4.044 -1.0  0.20)
+        (6.044  1.0  0.20)
+        (6.044 -1.0  0.20)
+    );
+}
+
+
+// ************************************************************************* //
